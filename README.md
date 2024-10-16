@@ -1,1 +1,1 @@
-"# capstone-project-kendraoue" 
+A Single Page Application (SPA) designed for a gaming ecosystem, featuring real-time chat, comprehensive user management, API-driven profile status updates, scheduling capabilities, and group management functionality.
