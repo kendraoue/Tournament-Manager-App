@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "mongoose": "^8.9.5",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "npm --prefix backend start",
+    "client": "npm --prefix discord-auth-client start"
+  }
+}
