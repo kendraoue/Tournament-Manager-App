@@ -36,17 +36,20 @@ const Login = () => {
 
     if (code) {
       console.log("Authorization Code received:", code);
-      fetchToken(code, BACKEND_URL);
+      fetchToken(code, BACKEND_URL, REDIRECT_URI);
     }
   }, [navigate]);
 
-  const fetchToken = async (code, BACKEND_URL) => {
+  const fetchToken = async (code, BACKEND_URL, redirectUri) => {
     try {
-      console.log("Sending code to backend:", code);
+      console.log("Authorization Code:", code);
+      console.log("Backend URL:", BACKEND_URL);
+      console.log("Redirect URI:", redirectUri);
+
       const response = await fetch(`${BACKEND_URL}/auth/getToken`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, redirect_uri: redirectUri }),
       });
 
       if (!response.ok) {
@@ -54,9 +57,16 @@ const Login = () => {
       }
 
       const data = await response.json();
+
       if (data.token) {
+        console.log("Token received:", data.token);
+
+        // Save the token to localStorage
         localStorage.setItem("discord_token", data.token);
+
+        // Optionally save user info
         localStorage.setItem("user", JSON.stringify(data.user));
+
         navigate("/dashboard");
       } else {
         console.error("Failed to obtain token:", data);

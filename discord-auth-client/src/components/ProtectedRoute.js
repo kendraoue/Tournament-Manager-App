@@ -1,20 +1,26 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Navigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("discord_token");
-
-  useEffect(() => {
-    console.log("ProtectedRoute mounted");
-    console.log("Token:", token);
-  }, [token]);
+  console.log("ProtectedRoute token:", token);
 
   if (!token) {
-    console.warn("No token found, redirecting to /login");
     return <Navigate to="/login" replace />;
   }
 
-  console.log("Token found, rendering children");
+  // Check for token expiration
+  try {
+    const decoded = jwtDecode(token);
+    if (decoded.exp * 1000 < Date.now()) {
+      localStorage.removeItem("discord_token");
+      return <Navigate to="/login" replace />;
+    }
+  } catch (e) {
+    localStorage.removeItem("discord_token");
+    return <Navigate to="/login" replace />;
+  }
 
   return children;
 };

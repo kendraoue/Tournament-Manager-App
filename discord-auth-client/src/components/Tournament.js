@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import CreateTournamentForm from "../components/CreateTournamentForm";
 
 export default function Tournament() {
   const [tournamentData, setTournamentData] = useState(null);
   const [errors, setErrors] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -21,19 +22,26 @@ export default function Tournament() {
     }
 
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/getMe`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: "include",
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Current user data:", data);
-        setCurrentUserId(data.discordId);
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
       })
-      .catch((err) => console.error("Failed to fetch user", err));
-  }, []);
+      .then((data) => {
+      if (data && data.username) {
+        setCurrentUser(data.username);
+      } else {
+        setCurrentUser(undefined);
+        setErrors([data.error || "Failed to fetch user"]);
+      }
+    })
+    .catch((err) => {
+      setCurrentUser(undefined);
+      setErrors(["Failed to fetch user"]);
+      console.error("Failed to fetch user", err);
+    });
+}, []);
 
   //Fetch tournaments
   useEffect(() => {
@@ -42,7 +50,10 @@ export default function Tournament() {
         if (!response.ok) throw new Error("Network response was not ok");
         return response.json();
       })
-      .then((data) => setTournamentData(data))
+      .then((data) => {
+        console.log("Fetched tournament data:", data);
+        setTournamentData(data);
+      })
       .catch((error) => {
         setErrors([error.message]); // Store the error message as an array
         console.error("There was a problem with the fetch operation:", error);
@@ -51,16 +62,35 @@ export default function Tournament() {
 
   const handleDelete = async (tournamentId) => {
     try {
+      const token = localStorage.getItem("discord_token");
+      if (!token) {
+        setErrors(["User is not authenticated"]);
+        return;
+      }
+
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/api/tournaments/${tournamentId}`,
         {
           method: "DELETE",
-          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
-      if (!res.ok) throw new Error("Failed to delete tournament");
 
-      // Remove it from state
+      if (!res.ok) {
+        // Try to parse error as JSON, fallback to text
+        let errorMsg = "Failed to delete tournament";
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.message || JSON.stringify(errorData);
+        } catch (e) {
+          errorMsg = await res.text();
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Only update state if deletion was successful
       setTournamentData((prev) =>
         prev.filter((tournament) => tournament._id !== tournamentId)
       );
@@ -108,10 +138,8 @@ export default function Tournament() {
       return;
     }
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-
     if (!currentUser) {
-      console.error("No currentUser found in localStorage");
+      console.error("No username available");
       setErrors(["User is not authenticated"]);
       return;
     }
@@ -121,7 +149,7 @@ export default function Tournament() {
       type,
       maxTeams: teams,
       startDateTime: selectedDate.toISOString(),
-      discordId: currentUser.discordId,
+      discordId: currentUser,
     };
 
     try {
@@ -156,6 +184,7 @@ export default function Tournament() {
       }
 
       const created = await response.json();
+      console.log("Created Tournament:", created);
       setTournamentData((prev) => [...prev, created]);
 
       // Reset form
@@ -189,44 +218,18 @@ export default function Tournament() {
       )}
 
       {/* Create Tournament Form */}
-      <div className="mb-6 p-4 border rounded bg-white shadow">
-        <h2 className="text-xl font-semibold mb-2">Create a Tournament</h2>
 
-        <input
-          className="block mb-2 p-2 border rounded w-full"
-          placeholder="Tournament Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <select
-          className="block mb-2 p-2 border rounded w-full"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
-          <option value="solos">Solos</option>
-          <option value="duos">Duos</option>
-          <option value="trios">Trios</option>
-        </select>
-        <input
-          className="block mb-2 p-2 border rounded w-full"
-          type="number"
-          placeholder="Max Teams"
-          value={maxTeams}
-          onChange={(e) => setMaxTeams(e.target.value)}
-        />
-        <input
-          type="datetime-local"
-          className="block mb-2 p-2 border rounded w-full"
-          value={startDateTime}
-          onChange={(e) => setStartDateTime(e.target.value)}
-        />
-        <button
-          className="bg-[#6C45E3] text-white px-4 py-2 rounded hover:bg-[#5a37c6]"
-          onClick={handleCreateTournament}
-        >
-          Create Tournament
-        </button>
-      </div>
+      <CreateTournamentForm
+        name={name}
+        setName={setName}
+        type={type}
+        setType={setType}
+        maxTeams={maxTeams}
+        setMaxTeams={setMaxTeams}
+        startDateTime={startDateTime}
+        setStartDateTime={setStartDateTime}
+        handleCreateTournament={handleCreateTournament}
+      />
 
       {/* List of Tournaments */}
       <ul>
@@ -235,18 +238,22 @@ export default function Tournament() {
             key={t._id}
             className="relative mb-2 p-4 border rounded shadow bg-white"
           >
-            {currentUserId === t.createdBy && (
-              <button
-                onClick={() => handleDelete(t._id)}
-                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-              >
-                ✖
-              </button>
+            {console.log("Tournament Data:", t)}
+            {console.log(
+              "Username from tournament:",
+              `"${t.createdBy?.username}"`
             )}
+            {console.log("Username from current user:", `"${currentUser}"`)}
+            {currentUser &&
+              t.createdBy?.username?.trim().toLowerCase() ==
+                currentUser.trim().toLowerCase() && (
+                <button onClick={() => handleDelete(t._id)}>Delete</button>
+              )}
             <h2 className="text-xl font-semibold">{t.name}</h2>
             <p>Type: {t.type}</p>
             <p>Max Teams: {t.maxTeams}</p>
             <p>Start Time: {new Date(t.startDateTime).toLocaleString()}</p>
+            <p>Created by: {t.createdBy?.username || "Unknown Creator"}</p>
           </li>
         ))}
       </ul>

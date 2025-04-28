@@ -1,6 +1,7 @@
 const Tournament = require("../models/Tournament");
 const User = require("../models/User");
 const fetch = require("node-fetch");
+const mongoose = require("mongoose");
 
 // GET all tournaments
 const getAllTournaments = async (req, res) => {
@@ -37,12 +38,16 @@ const createTournament = async (req, res) => {
       type,
       maxTeams,
       startDateTime,
-      createdBy: user._id, // Use MongoDB ObjectId
+      createdBy: user._id,
     });
 
     await newTournament.save();
 
-    res.status(201).json(newTournament);
+    const populatedTournament = await Tournament.findById(
+      newTournament._id
+    ).populate("createdBy", "username", "discordId");
+    console.log(tournaments);
+    res.status(201).json(populatedTournament);
   } catch (error) {
     console.error("Error creating tournament:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -52,11 +57,33 @@ const createTournament = async (req, res) => {
 // DELETE a tournament (only if owned by user)
 const deleteTournament = async (req, res) => {
   try {
-    const { id } = req.params;
-    const tournament = await Tournament.findById(id);
+    console.log("Request params:", req.params);
+    console.log("Request user:", req.user);
 
+    if (!req.user) {
+      console.error("No user found on request object!");
+      return res.status(401).json({ message: "Unauthorized: No user info" });
+    }
+
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid tournament ID" });
+    }
+
+    // Find the tournament
+    const tournament = await Tournament.findById(id);
+    console.log(`Tournament to delete:`, tournament);
+
+    // If not found, return 404
     if (!tournament) {
       return res.status(404).json({ message: "Tournament not found" });
+    }
+
+    // Check if the user is authorized to delete
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     if (tournament.createdBy.toString() !== req.user._id.toString()) {
@@ -65,11 +92,12 @@ const deleteTournament = async (req, res) => {
         .json({ message: "Not authorized to delete this tournament" });
     }
 
+    // Delete the tournament
     await Tournament.findByIdAndDelete(id);
     res.json({ message: "Tournament deleted successfully" });
   } catch (err) {
-    console.error("Error deleting tournament:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error deleting tournament:", err.message, err.stack);
+    res.status(500).json({ message: err.message || "Server error" });
   }
 };
 

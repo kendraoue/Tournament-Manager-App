@@ -143,7 +143,7 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
         {/* Top Navbar - visible on small screens */}
         <Navbar
           fluid
-          className="min-h-[50px] px-4 fixed w-full lg:hidden"
+          className="min-h-[50px] px-4 fixed w-full z-50 lg:hidden"
           style={{ backgroundColor: "#6C45E3" }}
         >
           <div className="flex justify-between w-full items-center text-white">

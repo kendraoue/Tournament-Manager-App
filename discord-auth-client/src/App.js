@@ -40,8 +40,9 @@ function App() {
       })
       .catch((err) => {
         console.error("Error fetching data:", err);
-        localStorage.removeItem("discord_token");
-        window.location.href = "/login";
+        // Only remove token if error is 401/invalid token
+        // localStorage.removeItem("discord_token");
+        // window.location.href = "/login";
       });
   }, []);
 
