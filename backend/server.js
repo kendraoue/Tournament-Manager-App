@@ -42,9 +42,14 @@ app.use(
 // Routes
 app.use("/auth", require("./routes/authRoutes"));
 app.use("/api", require("./routes/userRoutes"));
-app.use("/api/teams", require("./routes/teamRoutes"));
+app.use("/api", require("./routes/teamRoutes"));
 app.use("/api", require("./routes/tournamentRoutes"));
 
+// Log all incoming requests
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

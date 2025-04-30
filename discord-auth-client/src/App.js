@@ -17,7 +17,7 @@ function App() {
       return;
     }
 
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/users/getMe`, {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/getMe`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

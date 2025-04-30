@@ -1,9 +1,49 @@
 const mongoose = require("mongoose");
 
-const TeamSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Store user IDs
-  createdAt: { type: Date, default: Date.now },
+const teamSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  tournament: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tournament',
+    required: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-module.exports = mongoose.model("Team", TeamSchema);
+// Middleware to enforce team size limit before saving
+teamSchema.pre('save', async function(next) {
+  try {
+    const tournament = await mongoose.model('Tournament').findById(this.tournament);
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    const maxTeamSize = {
+      'solos': 1,
+      'duos': 2,
+      'trios': 3
+    }[tournament.type];
+
+    const memberCount = await mongoose.model('TeamMember').countDocuments({ team: this._id });
+    if (memberCount >= maxTeamSize) {
+      throw new Error(`Team has reached maximum size of ${maxTeamSize}`);
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = mongoose.model("Team", teamSchema);

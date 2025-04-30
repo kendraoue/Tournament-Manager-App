@@ -8,7 +8,7 @@ const tournamentSchema = new mongoose.Schema({
     required: true,
   },
   maxTeamSize: { type: Number },
-  maxTeams: { type: Number },
+  maxTeams: { type: Number, required: true },
   startDateTime: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
   createdBy: {
@@ -27,4 +27,5 @@ tournamentSchema.pre("save", function (next) {
   this.maxTeamSize = typeToSize[this.type];
   next();
 });
+
 module.exports = mongoose.model("Tournament", tournamentSchema);

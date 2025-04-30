@@ -20,7 +20,16 @@ const getAllTournaments = async (req, res) => {
 // POST create a tournament
 const createTournament = async (req, res) => {
   try {
+    console.log("Received request body:", req.body);
     const { name, type, maxTeams, startDateTime, discordId } = req.body;
+    
+    console.log("Extracted values:", {
+      name,
+      type,
+      maxTeams,
+      startDateTime,
+      discordId
+    });
 
     if (!discordId) {
       return res.status(400).json({ error: "Missing user information" });
@@ -42,11 +51,11 @@ const createTournament = async (req, res) => {
     });
 
     await newTournament.save();
-
-    const populatedTournament = await Tournament.findById(
-      newTournament._id
-    ).populate("createdBy", "username", "discordId");
-    console.log(tournaments);
+    console.log("New Tournament ID:", newTournament._id);
+    const populatedTournament = await Tournament.findById(newTournament._id)
+      .populate("createdBy", "username discordId");
+    
+    console.log("Created tournament:", populatedTournament);
     res.status(201).json(populatedTournament);
   } catch (error) {
     console.error("Error creating tournament:", error);
