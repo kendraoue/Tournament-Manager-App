@@ -15,6 +15,10 @@ const teamSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  members: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -35,8 +39,7 @@ teamSchema.pre('save', async function(next) {
       'trios': 3
     }[tournament.type];
 
-    const memberCount = await mongoose.model('TeamMember').countDocuments({ team: this._id });
-    if (memberCount >= maxTeamSize) {
+    if (this.members.length > maxTeamSize) {
       throw new Error(`Team has reached maximum size of ${maxTeamSize}`);
     }
 

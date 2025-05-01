@@ -62,7 +62,7 @@ const YourTeamsDashboard = () => {
                 {team.members.map((member) => (
                   <Badge key={member.id}>
                     {member.username}
-                    {member.id === team.created_by && " (Creator)"}
+                    {member.id === team.createdBy && " (Creator)"}
                   </Badge>
                 ))}
               </div>

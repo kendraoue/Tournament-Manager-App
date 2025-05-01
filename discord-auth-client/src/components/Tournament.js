@@ -21,7 +21,17 @@ export default function Tournament() {
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
 
-  //Fetch current user
+  // Add these state variables at the top of your component
+  const [teams, setTeams] = useState({});
+  const [teamMembers, setTeamMembers] = useState({});
+
+  // Update setErrors to include scrolling
+  const setErrorsWithScroll = (newErrors) => {
+    setErrors(newErrors);
+    scrollToTop();
+  };
+
+  // Fetch current user
   useEffect(() => {
     const token = localStorage.getItem("discord_token");
 
@@ -40,23 +50,23 @@ export default function Tournament() {
       .then((data) => {
         console.log("Full user data from getMe:", data);
         if (data && data.username) {
-          setCurrentUser(data.username);
+        setCurrentUser(data.username);
           setCurrentUserId(data.discordId);
           console.log("Set user data:", {
             username: data.username,
             discordId: data.discordId
           });
         } else {
-          setErrors([data.error || "Failed to fetch user"]);
+          setErrorsWithScroll([data.error || "Failed to fetch user"]);
         }
       })
       .catch((err) => {
-        setErrors(["Failed to fetch user"]);
+        setErrorsWithScroll(["Failed to fetch user"]);
         console.error("Failed to fetch user", err);
       });
   }, []);
 
-  //Fetch tournaments
+  // Fetch tournaments
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/tournaments`)
       .then((response) => {
@@ -68,7 +78,7 @@ export default function Tournament() {
         setTournamentData(data);
       })
       .catch((error) => {
-        setErrors([error.message]); // Store the error message as an array
+        setErrorsWithScroll([error.message]);
         console.error("There was a problem with the fetch operation:", error);
       });
   }, []);
@@ -118,7 +128,7 @@ export default function Tournament() {
     try {
       const token = localStorage.getItem("discord_token");
       if (!token) {
-        setErrors(["User is not authenticated"]);
+        setErrorsWithScroll(["User is not authenticated"]);
         return;
       }
 
@@ -136,7 +146,7 @@ export default function Tournament() {
         // Try to parse error as JSON, fallback to text
         let errorMsg = "Failed to delete tournament";
         try {
-          const errorData = await res.json();
+        const errorData = await res.json();
           errorMsg = errorData.message || JSON.stringify(errorData);
         } catch (e) {
           errorMsg = await res.text();
@@ -150,7 +160,7 @@ export default function Tournament() {
       );
     } catch (err) {
       console.error(err);
-      setErrors([err.message]);
+      setErrorsWithScroll([err.message]);
     }
   };
 
@@ -188,13 +198,13 @@ export default function Tournament() {
 
     if (validationErrors.length > 0) {
       console.log("Validation errors:", validationErrors);
-      setErrors(validationErrors);
+      setErrorsWithScroll(validationErrors);
       return;
     }
 
     if (!currentUser) {
       console.error("No username available");
-      setErrors(["User is not authenticated"]);
+      setErrorsWithScroll(["User is not authenticated"]);
       return;
     }
 
@@ -226,7 +236,7 @@ export default function Tournament() {
 
       if (!token) {
         console.error("No token found in localStorage");
-        setErrors(["User is not authenticated"]);
+        setErrorsWithScroll(["User is not authenticated"]);
         return;
       }
 
@@ -272,11 +282,11 @@ export default function Tournament() {
       setType("solos");
       setMaxTeams("");
       setStartDateTime("");
-      setErrors([]); // Clear errors after successful submission
+      setErrorsWithScroll([]); // Clear errors after successful submission
     } catch (err) {
       console.error(err);
       console.error("Caught error during fetch:", err);
-      setErrors([err.message]);
+      setErrorsWithScroll([err.message]);
     }
   };
 
@@ -289,7 +299,7 @@ export default function Tournament() {
     try {
       const token = localStorage.getItem("discord_token");
       if (!token) {
-        setErrors(["User is not authenticated"]);
+        setErrorsWithScroll(["User is not authenticated"]);
         return;
       }
 
@@ -326,13 +336,213 @@ export default function Tournament() {
         [selectedTournament.id]: (prev[selectedTournament.id] || 0) + 1
       }));
 
+      // Fetch updated teams data
+      await fetchTeamsAndMembers(selectedTournament.id);
+
       setIsCreateTeamModalOpen(false);
       setSelectedTournament(null);
 
     } catch (err) {
       console.error('Error creating team:', err);
-      setErrors([err.message]);
+      setErrorsWithScroll([err.message]);
     }
+  };
+
+  const fetchTeamsAndMembers = async (tournamentId) => {
+    try {
+      const token = localStorage.getItem("discord_token");
+      
+      // Fetch teams with populated members
+      const teamsResponse = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/tournaments/${tournamentId}/teams`
+      );
+      
+      if (!teamsResponse.ok) throw new Error('Failed to fetch teams');
+      const teamsData = await teamsResponse.json();
+      
+      console.log('Fetched teams data:', teamsData); // Debug log
+
+      setTeams(prev => ({
+        ...prev,
+        [tournamentId]: teamsData
+      }));
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      setErrorsWithScroll(prev => [...prev, 'Failed to fetch teams']);
+    }
+  };
+
+  const handleJoinTeam = async (teamId, tournamentId) => {
+    try {
+      const token = localStorage.getItem("discord_token");
+      if (!token) {
+        setErrorsWithScroll(["User is not authenticated"]);
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/join`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            userId: currentUserId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to join team');
+      }
+
+      // Refresh teams data
+      await fetchTeamsAndMembers(tournamentId);
+
+    } catch (err) {
+      console.error('Error joining team:', err);
+      setErrorsWithScroll([err.message]);
+    }
+  };
+
+  const getMaxTeamSize = (type) => {
+    const sizes = {
+      'solos': 1,
+      'duos': 2,
+      'trios': 3
+    };
+    return sizes[type] || 1;
+  };
+
+  // Add this function to handle accordion toggle
+  const handleAccordionToggle = async (tournamentId) => {
+    const element = document.getElementById(`tournament-${tournamentId}`);
+    const isHidden = element.classList.contains('hidden');
+    
+    if (isHidden) {
+      // Fetch teams data when opening the accordion
+      await fetchTeamsAndMembers(tournamentId);
+    }
+    
+    element.classList.toggle('hidden');
+  };
+
+  // Add this helper function to check if user is in team
+  const isUserInTeam = (team, userId) => {
+    return team.members.some(member => 
+        member._id === userId || member.discordId === userId
+    );
+  };
+
+  const handleDeleteTeam = async (teamId, tournamentId) => {
+    try {
+        const token = localStorage.getItem("discord_token");
+        if (!token) {
+            setErrorsWithScroll(["User is not authenticated"]);
+            return;
+        }
+
+        const response = await fetch(
+            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to delete team');
+        }
+
+        // Update team count immediately
+        setTeamCounts(prev => ({
+            ...prev,
+            [tournamentId]: Math.max(0, (prev[tournamentId] || 0) - 1)
+        }));
+
+        // Refresh teams data
+        await fetchTeamsAndMembers(tournamentId);
+    } catch (err) {
+        console.error('Error deleting team:', err);
+        setErrorsWithScroll([err.message]);
+    }
+  };
+
+  const handleLeaveTeam = async (teamId, tournamentId) => {
+    try {
+        const token = localStorage.getItem("discord_token");
+        if (!token) {
+            setErrorsWithScroll(["User is not authenticated"]);
+            return;
+        }
+
+        const response = await fetch(
+            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/leave`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to leave team');
+        }
+
+        // Refresh teams data
+        await fetchTeamsAndMembers(tournamentId);
+    } catch (err) {
+        console.error('Error leaving team:', err);
+        setErrorsWithScroll([err.message]);
+    }
+  };
+
+  const handleRemoveMember = async (teamId, memberId, tournamentId) => {
+    try {
+        const token = localStorage.getItem("discord_token");
+        if (!token) {
+            setErrorsWithScroll(["User is not authenticated"]);
+            return;
+        }
+
+        const response = await fetch(
+            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/members/${memberId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to remove team member');
+        }
+
+        // Refresh teams data
+        await fetchTeamsAndMembers(tournamentId);
+    } catch (err) {
+        console.error('Error removing team member:', err);
+        setErrorsWithScroll([err.message]);
+    }
+  };
+
+  // Add this helper function
+  const scrollToTop = () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
   };
 
   if (!tournamentData) return <div>Loading...</div>;
@@ -372,12 +582,12 @@ export default function Tournament() {
           <div key={t._id} className="border rounded-lg shadow-sm">
             <div 
               className="flex justify-between items-center p-4 rounded-lg bg-white cursor-pointer hover:bg-gray-50"
-              onClick={() => document.getElementById(`tournament-${t._id}`).classList.toggle('hidden')}
+              onClick={() => handleAccordionToggle(t._id)}
             >
               <h2 className="text-xl font-semibold text-gray-800">{t.name}</h2>
-              {currentUser &&
+            {currentUser &&
                 t.createdBy?.username?.trim().toLowerCase() ===
-                  currentUser.trim().toLowerCase() && (
+                currentUser.trim().toLowerCase() && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -411,18 +621,126 @@ export default function Tournament() {
                     </p>
                   </div>
                 </div>
-                
-                <button
-                  onClick={() => handleCreateTeam(t._id, t.type)}
-                  className={`w-full py-2 px-4 rounded-md font-medium transition-colors duration-200
-                    ${(teamCounts[t._id] || 0) >= t.maxTeams 
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                  disabled={(teamCounts[t._id] || 0) >= t.maxTeams}
-                >
-                  {(teamCounts[t._id] || 0) >= t.maxTeams ? 'Tournament Full' : 'Create Team'}
-                </button>
+
+                {/* Teams Section */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold">Teams</h4>
+                  
+                  {teams[t._id]?.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {teams[t._id].map((team) => (
+                        <div key={team._id} className="bg-white p-4 rounded-lg shadow-sm">
+                          <div className="flex justify-between items-start mb-4">
+                            <h5 className="font-semibold text-lg">{team.name}</h5>
+                            {/* Add debug log */}
+                            {console.log('Creator check:', {
+                              teamCreator: team.createdBy,
+                              teamCreatorId: team.createdBy._id,
+                              currentUserId: currentUserId,
+                              currentUser: currentUser,
+                              isCreator: team.createdBy.username?.toLowerCase() === currentUser?.toLowerCase()
+                            })}
+                            {team.createdBy.username?.toLowerCase() === currentUser?.toLowerCase() && (
+                              <button
+                                onClick={() => handleDeleteTeam(team._id, t._id)}
+                                className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-50"
+                                title="Delete Team"
+                              >
+                                Delete Team
+                              </button>
+                            )}
+                          </div>
+                          
+                          {/* Team Members */}
+                          <div className="space-y-2 mb-4">
+                            <p className="text-sm text-gray-600">Members:</p>
+                            <ul className="list-none space-y-2">
+                                {team.members.map((member) => (
+                                    <li key={member._id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                        <div className="flex items-center">
+                                            <span className="text-sm">{member.username}</span>
+                                            {member.discordId === currentUserId && (
+                                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                    You
+                                                </span>
+                                            )}
+                                            {member._id === team.createdBy._id && (
+                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                                    Creator
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Controls */}
+                                        <div className="flex items-center space-x-2">
+                                            {/* Remove Member Button - Only shown to team creator and not for themselves */}
+                                            {team.createdBy._id === currentUserId && 
+                                             member._id !== team.createdBy._id && (
+                                                <button
+                                                    onClick={() => handleRemoveMember(team._id, member._id, t._id)}
+                                                    className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-50"
+                                                    title="Remove Member"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                            
+                                            {/* Leave Team Button - Only shown to the member themselves if they're not the creator */}
+                                            {member.discordId === currentUserId && 
+                                             member._id !== team.createdBy._id && (
+                                                <button
+                                                    onClick={() => handleLeaveTeam(team._id, t._id)}
+                                                    className="text-yellow-600 hover:text-yellow-700 text-sm px-2 py-1 rounded-md hover:bg-yellow-50"
+                                                >
+                                                    Leave
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                          </div>
+
+                          {/* Team Controls Section */}
+                          <div className="mt-4 space-y-2">
+                              {/* Delete Team Button - Only shown to creator */}
+                              {team.createdBy._id === currentUserId && (
+                                  <button
+                                      onClick={() => handleDeleteTeam(team._id, t._id)}
+                                      className="w-full py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                                  >
+                                      Delete Team
+                                  </button>
+                              )}
+
+                              {/* Join Team Button */}
+                              {!isUserInTeam(team, currentUserId) && 
+                               team.members.length < getMaxTeamSize(t.type) && (
+                                  <button
+                                      onClick={() => handleJoinTeam(team._id, t._id)}
+                                      className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                  >
+                                      Join Team
+                                  </button>
+                              )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No teams yet</p>
+                  )}
+
+                  {/* Create Team Button */}
+                  {(teamCounts[t._id] || 0) < t.maxTeams && (
+                    <button
+                      onClick={() => handleCreateTeam(t._id, t.type)}
+                      className="w-full py-2 px-4 rounded-md font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                    >
+                      Create Team
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

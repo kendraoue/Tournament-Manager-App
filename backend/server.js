@@ -4,6 +4,7 @@ const express = require("express");
 const connectDB = require("./config/db");
 const session = require("express-session");
 const cors = require("cors");
+require('./models/TeamMember');
 
 const app = express();
 connectDB();
@@ -45,10 +46,15 @@ app.use("/api", require("./routes/userRoutes"));
 app.use("/api", require("./routes/teamRoutes"));
 app.use("/api", require("./routes/tournamentRoutes"));
 
-// Log all incoming requests
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    next();
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something broke!' });
+});
+
+// Add 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route not found' });
 });
 // Start server
 app.listen(PORT, () => {
