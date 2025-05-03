@@ -25,6 +25,9 @@ export default function Tournament() {
   const [teams, setTeams] = useState({});
   const [teamMembers, setTeamMembers] = useState({});
 
+  // Add this new state variable
+  const [isCreateTournamentModalOpen, setIsCreateTournamentModalOpen] = useState(false);
+
   // Update setErrors to include scrolling
   const setErrorsWithScroll = (newErrors) => {
     setErrors(newErrors);
@@ -548,38 +551,60 @@ export default function Tournament() {
   if (!tournamentData) return <div>Loading...</div>;
 
   return (
-    <div className="p-4">
+    <main className="p-4">
       <h1 className="text-2xl font-bold mb-4">Tournaments</h1>
+
+      <button
+        onClick={() => setIsCreateTournamentModalOpen(true)}
+        className="mb-4 px-4 py-2 bg-[#6C45E3] text-white rounded hover:bg-blue-700 font-semibold"
+      >
+        Create Tournament
+      </button>
 
       {/* Only show the error messages if there are errors */}
       {errors.length > 0 && (
-        <div className="mb-4 text-red-600 bg-red-100 p-2 rounded border border-red-300">
+        <section className="mb-4 text-red-600 bg-red-100 p-2 rounded border border-red-300" role="alert">
           <ul>
             {errors.map((error, index) => (
-              <li key={index}>{error}</li> // Display each error message
+              <li key={index}>{error}</li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Modal for Create Tournament */}
+      {isCreateTournamentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-[#6C45E3] rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+            <button
+              onClick={() => setIsCreateTournamentModalOpen(false)}
+              className="absolute top-2 right-2 text-lime-500 hover:text-lime-700 text-2xl"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <CreateTournamentForm
+              name={name}
+              setName={setName}
+              type={type}
+              setType={setType}
+              maxTeams={maxTeams}
+              setMaxTeams={setMaxTeams}
+              startDateTime={startDateTime}
+              setStartDateTime={setStartDateTime}
+              handleCreateTournament={async () => {
+                await handleCreateTournament();
+                setIsCreateTournamentModalOpen(false);
+              }}
+            />
+          </div>
         </div>
       )}
 
-      {/* Create Tournament Form */}
-
-      <CreateTournamentForm
-        name={name}
-        setName={setName}
-        type={type}
-        setType={setType}
-        maxTeams={maxTeams}
-        setMaxTeams={setMaxTeams}
-        startDateTime={startDateTime}
-        setStartDateTime={setStartDateTime}
-        handleCreateTournament={handleCreateTournament}
-      />
-<h3 className="text-xl font-bold mb-4">Active Tournaments</h3>
       {/* List of Tournaments */}
-      <div className="space-y-4">
+      <section className="space-y-4" aria-label="Tournaments">
         {tournamentData.map((t) => (
-          <div key={t._id} className="border rounded-lg shadow-sm">
+          <article key={t._id} className="border rounded-lg shadow-sm">
             <div 
               className="flex justify-between items-center p-4 rounded-lg bg-white cursor-pointer hover:bg-gray-50"
               onClick={() => handleAccordionToggle(t._id)}
@@ -623,13 +648,13 @@ export default function Tournament() {
                 </div>
 
                 {/* Teams Section */}
-                <div className="space-y-4">
+                <section className="space-y-4" aria-label="Teams">
                   <h4 className="text-lg font-semibold">Teams</h4>
                   
                   {teams[t._id]?.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {teams[t._id].map((team) => (
-                        <div key={team._id} className="bg-white p-4 rounded-lg shadow-sm">
+                        <article key={team._id} className="bg-white p-4 rounded-lg shadow-sm">
                           <div className="flex justify-between items-start mb-4">
                             <h5 className="font-semibold text-lg">{team.name}</h5>
                             {/* Add debug log */}
@@ -724,7 +749,7 @@ export default function Tournament() {
                                   </button>
                               )}
                           </div>
-                        </div>
+                        </article>
                       ))}
                     </div>
                   ) : (
@@ -740,12 +765,12 @@ export default function Tournament() {
                       Create Team
                     </button>
                   )}
-                </div>
+                </section>
               </div>
             </div>
-          </div>
+          </article>
         ))}
-      </div>
+      </section>
 
       <CreateTeamForm
         isOpen={isCreateTeamModalOpen}
@@ -756,6 +781,6 @@ export default function Tournament() {
         onSubmit={handleTeamFormSubmit}
         tournamentType={selectedTournament?.type}
       />
-    </div>
+    </main>
   );
 }

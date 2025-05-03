@@ -81,14 +81,14 @@ const Login = () => {
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
+    <main className="h-screen flex items-center justify-center bg-gray-900 text-white">
       {isLoading ? (
-        <div className="text-center">
+        <section className="text-center" aria-busy="true">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p>Authenticating with Discord...</p>
-        </div>
+        </section>
       ) : (
-        <div className="bg-gray-800 shadow-lg rounded-lg p-8 max-w-md w-full text-center">
+        <section className="bg-gray-800 shadow-lg rounded-lg p-8 max-w-md w-full text-center">
           <h1 className="text-3xl font-bold mb-4">
             Welcome to Naraka Tournament!
           </h1>
@@ -100,9 +100,9 @@ const Login = () => {
               Login with Discord
             </button>
           </a>
-        </div>
+        </section>
       )}
-    </div>
+    </main>
   );
 };
 

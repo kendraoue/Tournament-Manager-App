@@ -110,7 +110,7 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
       <aside className="hidden lg:flex flex-col w-64 h-full bg-[#6C45E3]">
         <div className="flex flex-col flex-1 overflow-y-auto p-8 gap-2">
           <h2 className="text-[25px] font-semibold mb-8">{activeLink}</h2>
-          <nav className="flex-1 flex flex-col items-start gap-2">
+          <nav className="flex-1 flex flex-col items-start gap-2" aria-label="Sidebar Navigation">
             {navLinks.slice(0, -1).map(({ icon, label, path }) => (
               <button key={label} onClick={() => setActiveLink(label)}>
                 <Link to={path} className="inline-flex gap-2 hover:font-semibold">
@@ -134,33 +134,35 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 h-full bg-[#987DE8]">
+      <div className="flex flex-col flex-1 h-full">
         {/* Top Navbar - visible on small screens */}
-        <Navbar
-          fluid
-          className="min-h-[50px] px-4 fixed w-full z-50 lg:hidden"
-          style={{ backgroundColor: "#6C45E3" }}
-        >
-          <div className="flex justify-between w-full items-center text-white">
-            <span className="font-bold text-lg">Naraka Tournament</span>
-            <div className="flex gap-4">
-              {navLinks.map(({ icon, label, path }) => (
-                <Link
-                  key={label}
-                  to={path}
-                  onClick={() => setActiveLink(label)}
-                  className="hover:font-semibold inline-flex"
-                >
-                  {icon}
-                  {label}
-                </Link>
-              ))}
+        <header>
+          <Navbar
+            fluid
+            className="min-h-[50px] px-4 fixed w-full z-50 lg:hidden"
+            style={{ backgroundColor: "#6C45E3" }}
+          >
+            <div className="flex justify-between w-full items-center text-white">
+              <span className="font-bold text-lg">Naraka Tournament</span>
+              <nav className="flex gap-4" aria-label="Mobile Navigation">
+                {navLinks.map(({ icon, label, path }) => (
+                  <Link
+                    key={label}
+                    to={path}
+                    onClick={() => setActiveLink(label)}
+                    className="hover:font-semibold inline-flex"
+                  >
+                    {icon}
+                    {label}
+                  </Link>
+                ))}
+              </nav>
             </div>
-          </div>
-        </Navbar>
+          </Navbar>
+        </header>
 
         {/* Routed Main Content */}
-        <main className="flex-1 overflow-y-auto mt-12 lg:mt-0 p-4">
+        <main className="flex-1 overflow-y-auto bg-[#987DE8] mt-12 lg:mt-0 p-4">
           <Outlet />
         </main>
       </div>
