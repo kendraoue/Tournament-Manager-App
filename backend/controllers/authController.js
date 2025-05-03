@@ -4,20 +4,31 @@ const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
 
 const { CLIENT_ID, CLIENT_SECRET, FRONTEND_URL } = process.env;
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret"; // Set this in your .env!
+const JWT_SECRET = process.env.JWT_SECRET;
 
+//Get Discord authentication token
 exports.getToken = async (req, res) => {
   try {
     console.log("Received request to get token");
 
+    // 1. Check for required env variables
+    if (!CLIENT_ID || !CLIENT_SECRET || !JWT_SECRET) {
+      console.error("Missing required environment variables");
+      return res.status(500).json({ error: "Server misconfiguration" });
+    }
+
+    // 2. Validate code in request body
     if (!req.body.code) {
       return res.status(400).json({ error: "Missing authorization code" });
     }
 
-    // Use redirect_uri from frontend if provided, else fallback to env
-    const redirectUri = req.body.redirect_uri || FRONTEND_URL;
+    // 3. Use a dedicated redirect URI (should match Discord app exactly)
+    const redirectUri = req.body.redirect_uri || process.env.DISCORD_REDIRECT_URI;
+    if (!redirectUri) {
+      return res.status(500).json({ error: "Missing redirect URI" });
+    }
 
-    // Exchange code for token
+    // 4. Exchange code for token
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       body: new URLSearchParams({
@@ -26,46 +37,41 @@ exports.getToken = async (req, res) => {
         code: req.body.code,
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
-        scope: "identify email",
       }),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
-    const oauthData = await tokenResponse.json();
+    let oauthData = await tokenResponse.json();
 
-    if (oauthData.error) {
-      console.error("OAuth Error:", oauthData.error_description);
-      return res.status(400).json({ error: oauthData.error_description });
+    if (!tokenResponse.ok || oauthData.error) {
+      console.error("OAuth Error:", oauthData.error_description || oauthData.error);
+      return res.status(400).json({ error: oauthData.error_description || oauthData.error });
     }
 
-    // Fetch user info from Discord
+    // Only fetch user info if token exchange succeeded!
     const userResponse = await fetch("https://discord.com/api/users/@me", {
       headers: { authorization: `Bearer ${oauthData.access_token}` },
     });
-
     const userData = await userResponse.json();
 
-    console.log("User Data:", userData);
-
-    // Store or update user in MongoDB
+    // 7. Store or update user in MongoDB
     let user = await User.findOne({ discordId: userData.id });
-
     if (!user) {
       user = new User({
         discordId: userData.id,
         username: userData.username,
         avatar: userData.avatar,
-        email: userData.email,
+        email: userData.email, // may be undefined
       });
       await user.save();
     }
 
-    // ✅ Save the user's id inside the session
+    // 8. Save user info in session
     req.session.userId = user._id;
-    req.session.discordId = user.discordId; // optional, if you want it
-    await req.session.save(); // ensure session is saved
+    req.session.discordId = user.discordId;
+    await req.session.save();
 
-    // Create JWT payload
+    // 9. Create JWT payload
     const payload = {
       _id: user._id,
       discordId: user.discordId,
@@ -74,9 +80,10 @@ exports.getToken = async (req, res) => {
       email: user.email,
     };
 
-    // Sign JWT (expires in 1 day)
+    // 10. Sign JWT (expires in 1 day)
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1d" });
 
+    // 11. Respond with user info and token
     res.json({
       message: "Authentication successful",
       user: {
@@ -85,7 +92,7 @@ exports.getToken = async (req, res) => {
         email: user.email,
         discordId: user.discordId,
       },
-      token, // <-- JWT here
+      token,
     });
   } catch (error) {
     console.error("Error exchanging token:", error);

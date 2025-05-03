@@ -105,25 +105,23 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
   };
 
   return (
-    <div
-      style={{ backgroundColor: "#6C45E3" }}
-      className="flex h-screen text-[#BCE345]"
-    >
-      {/* Sidebar - only visible on large screens */}
-      <div className="hidden lg:block w-64">
-        <div className="flex flex-col h-full items-start p-8 gap-2">
+    <div className="flex h-screen text-[#BCE345] bg-[#6C45E3]">
+      {/* Sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 h-full bg-[#6C45E3]">
+        <div className="flex flex-col flex-1 overflow-y-auto p-8 gap-2">
           <h2 className="text-[25px] font-semibold mb-8">{activeLink}</h2>
-          {navLinks.slice(0, -1).map(({ icon, label, path }) => (
-            <button key={label} onClick={() => setActiveLink(label)}>
-              <Link to={path} className="inline-flex gap-2 hover:font-semibold">
-                {icon}
-                {label}
-              </Link>
-            </button>
-          ))}
-
-          {/* Logout Button */}
-          <div className="mt-auto">
+          <nav className="flex-1 flex flex-col items-start gap-2">
+            {navLinks.slice(0, -1).map(({ icon, label, path }) => (
+              <button key={label} onClick={() => setActiveLink(label)}>
+                <Link to={path} className="inline-flex gap-2 hover:font-semibold">
+                  {icon}
+                  {label}
+                </Link>
+              </button>
+            ))}
+          </nav>
+          {/* Logout Button always at the bottom */}
+          <div className="mt-4">
             <button
               onClick={handleLogout}
               className="inline-flex gap-2 hover:font-semibold"
@@ -133,13 +131,10 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Main Content Area */}
-      <div
-        className="flex flex-col flex-1 relative"
-        style={{ backgroundColor: "#987DE8" }}
-      >
+      <div className="flex flex-col flex-1 h-full bg-[#987DE8]">
         {/* Top Navbar - visible on small screens */}
         <Navbar
           fluid
@@ -165,7 +160,7 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
         </Navbar>
 
         {/* Routed Main Content */}
-        <main className="flex-1 overflow-y-auto mt-8 lg:mt-0">
+        <main className="flex-1 overflow-y-auto mt-12 lg:mt-0 p-4">
           <Outlet />
         </main>
       </div>

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 const Login = () => {
   const [authUrl, setAuthUrl] = useState("");
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const CLIENT_ID = process.env.REACT_APP_DISCORD_CLIENT_ID;
@@ -41,6 +42,7 @@ const Login = () => {
   }, [navigate]);
 
   const fetchToken = async (code, BACKEND_URL, redirectUri) => {
+    setIsLoading(true);
     try {
       console.log("Authorization Code:", code);
       console.log("Backend URL:", BACKEND_URL);
@@ -73,24 +75,33 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Error fetching token:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
-      <div className="bg-gray-800 shadow-lg rounded-lg p-8 max-w-md w-full text-center">
-        <h1 className="text-3xl font-bold mb-4">
-          Welcome to Naraka Tournament!
-        </h1>
-        <p className="text-gray-400 mb-6">
-          Please log in with Discord to access the tournament registration form.
-        </p>
-        <a href={authUrl}>
-          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-            Login with Discord
-          </button>
-        </a>
-      </div>
+      {isLoading ? (
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Authenticating with Discord...</p>
+        </div>
+      ) : (
+        <div className="bg-gray-800 shadow-lg rounded-lg p-8 max-w-md w-full text-center">
+          <h1 className="text-3xl font-bold mb-4">
+            Welcome to Naraka Tournament!
+          </h1>
+          <p className="text-gray-400 mb-6">
+            Please log in with Discord to access the tournament registration form.
+          </p>
+          <a href={authUrl}>
+            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+              Login with Discord
+            </button>
+          </a>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,8 +8,35 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Tournament from "./components/Tournament";
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const cachedUser = localStorage.getItem('cached_user');
+    return cachedUser ? JSON.parse(cachedUser) : null;
+  });
   const [userTeam, setUserTeam] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("discord_token");
+    if (!token) return;
+
+    // Only fetch if we don't have cached data
+    if (!user) {
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/getMe`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((userData) => {
+          const userInfo = {
+            discordId: userData.discordId,
+            discordName: userData.username,
+            avatar: userData.avatar,
+            email: userData.email,
+          };
+          setUser(userInfo);
+          // Cache the user data
+          localStorage.setItem('cached_user', JSON.stringify(userInfo));
+        });
+    }
+  }, [user]);
 
   useEffect(() => {
     const token = localStorage.getItem("discord_token");
@@ -17,33 +44,7 @@ function App() {
       return;
     }
 
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/getMe`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((userData) => {
-        setUser({
-          discordId: userData.discordId,
-          discordName: userData.username,
-          avatar: userData.avatar,
-          email: userData.email,
-        });
-
-        return fetch(`${process.env.REACT_APP_BACKEND_URL}/api/teams`);
-      })
-      .then((res) => res.json())
-      .then((teamData) => {
-        const foundTeam = teamData.find((team) =>
-          team.members.includes(user?.discordName)
-        );
-        if (foundTeam) setUserTeam(foundTeam);
-      })
-      .catch((err) => {
-        console.error("Error fetching data:", err);
-        // Only remove token if error is 401/invalid token
-        // localStorage.removeItem("discord_token");
-        // window.location.href = "/login";
-      });
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/teams`);
   }, []);
 
   return (
