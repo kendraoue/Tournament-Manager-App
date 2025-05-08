@@ -1,40 +1,62 @@
 import { useEffect, useState } from "react";
 import CreateTournamentForm from "../components/CreateTournamentForm";
-import CreateTeamForm from './CreateTeamForm';
+import CreateTeamForm from "./CreateTeamForm";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+// Ensure ToastContainer is rendered in the component
+<ToastContainer />;
 
 export default function Tournament() {
+  // State for tournament data
   const [tournamentData, setTournamentData] = useState(null);
+
+  // State for error messages
   const [errors, setErrors] = useState([]);
+
+  // State for current user information
   const [currentUser, setCurrentUser] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  // Form state
+  // Form state for creating tournaments
   const [name, setName] = useState("");
   const [type, setType] = useState("solos");
   const [maxTeams, setMaxTeams] = useState("");
   const [startDateTime, setStartDateTime] = useState("");
 
-  // Team counts state
+  // State for tracking team counts per tournament
   const [teamCounts, setTeamCounts] = useState({});
 
-  // Create team modal state
+  // State for managing the create team modal
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
 
-  // Add these state variables at the top of your component
+  // State for managing teams and their members
   const [teams, setTeams] = useState({});
   const [teamMembers, setTeamMembers] = useState({});
 
-  // Add this new state variable
-  const [isCreateTournamentModalOpen, setIsCreateTournamentModalOpen] = useState(false);
+  // State for managing the create tournament modal
+  const [isCreateTournamentModalOpen, setIsCreateTournamentModalOpen] =
+    useState(false);
 
-  // Update setErrors to include scrolling
+  // State for managing accordion open/close
+  const [openAccordion, setOpenAccordion] = useState(null);
+
+  // Helper function to scroll to the top of the page
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // Helper function to set errors and scroll to the top of the page
   const setErrorsWithScroll = (newErrors) => {
     setErrors(newErrors);
     scrollToTop();
   };
 
-  // Fetch current user
+  // Fetch current user information on component mount
   useEffect(() => {
     const token = localStorage.getItem("discord_token");
 
@@ -53,11 +75,11 @@ export default function Tournament() {
       .then((data) => {
         console.log("Full user data from getMe:", data);
         if (data && data.username) {
-        setCurrentUser(data.username);
+          setCurrentUser(data.username);
           setCurrentUserId(data.discordId);
           console.log("Set user data:", {
             username: data.username,
-            discordId: data.discordId
+            discordId: data.discordId,
           });
         } else {
           setErrorsWithScroll([data.error || "Failed to fetch user"]);
@@ -69,7 +91,7 @@ export default function Tournament() {
       });
   }, []);
 
-  // Fetch tournaments
+  // Fetch tournaments on component mount
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/tournaments`)
       .then((response) => {
@@ -86,9 +108,9 @@ export default function Tournament() {
       });
   }, []);
 
+  // Fetch team counts for each tournament when tournament data changes
   useEffect(() => {
     if (tournamentData) {
-      // Fetch team counts for each tournament
       const fetchTeamCounts = async () => {
         try {
           const counts = {};
@@ -97,16 +119,22 @@ export default function Tournament() {
               const response = await fetch(
                 `${process.env.REACT_APP_BACKEND_URL}/api/tournaments/${tournament._id}/teams/count`
               );
-              
+
               if (!response.ok) {
-                console.error(`Failed to fetch team count for tournament ${tournament._id}:`, response.status);
+                console.error(
+                  `Failed to fetch team count for tournament ${tournament._id}:`,
+                  response.status
+                );
                 continue; // Skip this tournament and continue with others
               }
-              
+
               const data = await response.json();
               counts[tournament._id] = data.count;
             } catch (error) {
-              console.error(`Error fetching team count for tournament ${tournament._id}:`, error);
+              console.error(
+                `Error fetching team count for tournament ${tournament._id}:`,
+                error
+              );
               // Set count to 0 if there's an error
               counts[tournament._id] = 0;
             }
@@ -127,6 +155,7 @@ export default function Tournament() {
     }
   }, [tournamentData]);
 
+  // Function to delete a tournament
   const handleDelete = async (tournamentId) => {
     try {
       const token = localStorage.getItem("discord_token");
@@ -149,7 +178,7 @@ export default function Tournament() {
         // Try to parse error as JSON, fallback to text
         let errorMsg = "Failed to delete tournament";
         try {
-        const errorData = await res.json();
+          const errorData = await res.json();
           errorMsg = errorData.message || JSON.stringify(errorData);
         } catch (e) {
           errorMsg = await res.text();
@@ -167,6 +196,7 @@ export default function Tournament() {
     }
   };
 
+  // Function to create a new tournament
   const handleCreateTournament = async () => {
     let validationErrors = []; // Array to collect validation errors
     console.log("Raw form values:", {
@@ -230,7 +260,7 @@ export default function Tournament() {
       type,
       maxTeams: teams,
       startDateTime: selectedDate.toISOString(),
-      discordId: currentUserId
+      discordId: currentUserId,
     });
 
     try {
@@ -250,7 +280,7 @@ export default function Tournament() {
         token: token ? "exists" : "missing",
         currentUser,
         currentUserId,
-        requestBody: newTournament
+        requestBody: newTournament,
       });
       const response = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/api/tournaments`,
@@ -270,7 +300,11 @@ export default function Tournament() {
         try {
           const errorJson = JSON.parse(errorText);
           console.error("Parsed error:", errorJson);
-          throw new Error(errorJson.error || errorJson.message || "Failed to create tournament");
+          throw new Error(
+            errorJson.error ||
+              errorJson.message ||
+              "Failed to create tournament"
+          );
         } catch (e) {
           throw new Error(errorText || "Failed to create tournament");
         }
@@ -286,18 +320,44 @@ export default function Tournament() {
       setMaxTeams("");
       setStartDateTime("");
       setErrorsWithScroll([]); // Clear errors after successful submission
+
+      // Show success toast
+      toast.success("Tournament created successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
     } catch (err) {
       console.error(err);
       console.error("Caught error during fetch:", err);
       setErrorsWithScroll([err.message]);
+
+      // Show error toast
+      toast.error("Failed to create tournament. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
     }
   };
 
+  // Function to handle creating a new team
   const handleCreateTeam = async (tournamentId, tournamentType) => {
     setSelectedTournament({ id: tournamentId, type: tournamentType });
     setIsCreateTeamModalOpen(true);
   };
 
+  // Function to handle team form submission
   const handleTeamFormSubmit = async ({ teamName }) => {
     try {
       const token = localStorage.getItem("discord_token");
@@ -306,9 +366,9 @@ export default function Tournament() {
         return;
       }
 
-      console.log('Submitting team form with:', {
+      console.log("Submitting team form with:", {
         teamName,
-        tournamentId: selectedTournament.id
+        tournamentId: selectedTournament.id,
       });
 
       const response = await fetch(
@@ -327,16 +387,16 @@ export default function Tournament() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create team');
+        throw new Error(errorData.error || "Failed to create team");
       }
 
       const newTeam = await response.json();
-      console.log('Team created:', newTeam);
-      
+      console.log("Team created:", newTeam);
+
       // Update team count for this tournament
-      setTeamCounts(prev => ({
+      setTeamCounts((prev) => ({
         ...prev,
-        [selectedTournament.id]: (prev[selectedTournament.id] || 0) + 1
+        [selectedTournament.id]: (prev[selectedTournament.id] || 0) + 1,
       }));
 
       // Fetch updated teams data
@@ -345,36 +405,49 @@ export default function Tournament() {
       setIsCreateTeamModalOpen(false);
       setSelectedTournament(null);
 
+      // Show success toast
+      toast.success("Team created successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
     } catch (err) {
-      console.error('Error creating team:', err);
+      console.error("Error creating team:", err);
       setErrorsWithScroll([err.message]);
     }
   };
 
+  // Function to fetch teams and their members for a specific tournament
   const fetchTeamsAndMembers = async (tournamentId) => {
     try {
       const token = localStorage.getItem("discord_token");
-      
+
       // Fetch teams with populated members
       const teamsResponse = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/api/tournaments/${tournamentId}/teams`
       );
-      
-      if (!teamsResponse.ok) throw new Error('Failed to fetch teams');
-      const teamsData = await teamsResponse.json();
-      
-      console.log('Fetched teams data:', teamsData); // Debug log
 
-      setTeams(prev => ({
+      if (!teamsResponse.ok) throw new Error("Failed to fetch teams");
+      const teamsData = await teamsResponse.json();
+
+      console.log("Fetched teams data:", teamsData); // Debug log
+
+      setTeams((prev) => ({
         ...prev,
-        [tournamentId]: teamsData
+        [tournamentId]: teamsData,
       }));
     } catch (error) {
-      console.error('Error fetching teams:', error);
-      setErrorsWithScroll(prev => [...prev, 'Failed to fetch teams']);
+      console.error("Error fetching teams:", error);
+      setErrorsWithScroll((prev) => [...prev, "Failed to fetch teams"]);
     }
   };
 
+  // Function to handle joining a team
   const handleJoinTeam = async (teamId, tournamentId) => {
     try {
       const token = localStorage.getItem("discord_token");
@@ -398,172 +471,215 @@ export default function Tournament() {
       );
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to join team');
+        throw new Error(data.error || "Failed to join team");
       }
 
       // Refresh teams data
       await fetchTeamsAndMembers(tournamentId);
-
+      // Show success toast
+      toast.success("Team joined successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
     } catch (err) {
-      console.error('Error joining team:', err);
+      console.error("Error joining team:", err);
       setErrorsWithScroll([err.message]);
     }
   };
 
+  // Helper function to get the maximum team size based on tournament type
   const getMaxTeamSize = (type) => {
     const sizes = {
-      'solos': 1,
-      'duos': 2,
-      'trios': 3
+      solos: 1,
+      duos: 2,
+      trios: 3,
     };
     return sizes[type] || 1;
   };
 
-  // Add this function to handle accordion toggle
+  // Function to handle accordion toggle for tournament details
   const handleAccordionToggle = async (tournamentId) => {
-    const element = document.getElementById(`tournament-${tournamentId}`);
-    const isHidden = element.classList.contains('hidden');
-    
-    if (isHidden) {
-      // Fetch teams data when opening the accordion
+    if (openAccordion === tournamentId) {
+      // Close the accordion
+      setOpenAccordion(null);
+    } else {
+      // Open the accordion and fetch data
       await fetchTeamsAndMembers(tournamentId);
+      setOpenAccordion(tournamentId);
     }
-    
-    element.classList.toggle('hidden');
   };
 
-  // Add this helper function to check if user is in team
+  // Helper function to check if the current user is in a team
   const isUserInTeam = (team, userId) => {
-    return team.members.some(member => 
-        member._id === userId || member.discordId === userId
+    return team.members.some(
+      (member) => member._id === userId || member.discordId === userId
     );
   };
 
+  // Function to handle deleting a team
   const handleDeleteTeam = async (teamId, tournamentId) => {
     try {
-        const token = localStorage.getItem("discord_token");
-        if (!token) {
-            setErrorsWithScroll(["User is not authenticated"]);
-            return;
+      const token = localStorage.getItem("discord_token");
+      if (!token) {
+        setErrorsWithScroll(["User is not authenticated"]);
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        const response = await fetch(
-            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}`,
-            {
-                method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete team");
+      }
 
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to delete team');
-        }
+      // Show success toast
+      toast.success("Team deleted successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "colored",
+      });
 
-        // Update team count immediately
-        setTeamCounts(prev => ({
-            ...prev,
-            [tournamentId]: Math.max(0, (prev[tournamentId] || 0) - 1)
-        }));
+      // Update team count immediately
+      setTeamCounts((prev) => ({
+        ...prev,
+        [tournamentId]: Math.max(0, (prev[tournamentId] || 0) - 1),
+      }));
 
-        // Refresh teams data
-        await fetchTeamsAndMembers(tournamentId);
+      // Refresh teams data
+      await fetchTeamsAndMembers(tournamentId);
     } catch (err) {
-        console.error('Error deleting team:', err);
-        setErrorsWithScroll([err.message]);
+      console.error("Error deleting team:", err);
+      setErrorsWithScroll([err.message]);
     }
   };
 
+  // Function to handle leaving a team
   const handleLeaveTeam = async (teamId, tournamentId) => {
     try {
-        const token = localStorage.getItem("discord_token");
-        if (!token) {
-            setErrorsWithScroll(["User is not authenticated"]);
-            return;
+      const token = localStorage.getItem("discord_token");
+      if (!token) {
+        setErrorsWithScroll(["User is not authenticated"]);
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/leave`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        const response = await fetch(
-            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/leave`,
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to leave team');
-        }
-
-        // Refresh teams data
-        await fetchTeamsAndMembers(tournamentId);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to leave team");
+      }
+      // Show success toast
+      toast.success("Left team successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
+      // Refresh teams data
+      await fetchTeamsAndMembers(tournamentId);
     } catch (err) {
-        console.error('Error leaving team:', err);
-        setErrorsWithScroll([err.message]);
+      console.error("Error leaving team:", err);
+      setErrorsWithScroll([err.message]);
     }
   };
 
+  // Function to handle removing a member from a team
   const handleRemoveMember = async (teamId, memberId, tournamentId) => {
     try {
-        const token = localStorage.getItem("discord_token");
-        if (!token) {
-            setErrorsWithScroll(["User is not authenticated"]);
-            return;
+      const token = localStorage.getItem("discord_token");
+      if (!token) {
+        setErrorsWithScroll(["User is not authenticated"]);
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/members/${memberId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        const response = await fetch(
-            `${process.env.REACT_APP_BACKEND_URL}/api/teams/${teamId}/members/${memberId}`,
-            {
-                method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to remove team member');
-        }
-
-        // Refresh teams data
-        await fetchTeamsAndMembers(tournamentId);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to remove team member");
+      }
+      // Show success toast
+      toast.success("Member removed successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
+      // Refresh teams data
+      await fetchTeamsAndMembers(tournamentId);
     } catch (err) {
-        console.error('Error removing team member:', err);
-        setErrorsWithScroll([err.message]);
+      console.error("Error removing team member:", err);
+      setErrorsWithScroll([err.message]);
     }
   };
 
-  // Add this helper function
-  const scrollToTop = () => {
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-  };
-
+  // Show loading message while tournament data is being fetched
   if (!tournamentData) return <div>Loading...</div>;
 
   return (
     <main className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Tournaments</h1>
+      {/* Toast container to display notifications */}
+      <ToastContainer />
+
+      <h1 className="text-2xl font-bold mb-4 text-[#BCE345]">Tournaments</h1>
 
       <button
         onClick={() => setIsCreateTournamentModalOpen(true)}
-        className="mb-4 px-4 py-2 bg-[#6C45E3] text-white rounded hover:bg-blue-700 font-semibold"
+        className="mb-4 px-4 py-2 bg-[#6C45E3] text-white rounded hover:bg-[#cabdf5] font-semibold"
       >
         Create Tournament
       </button>
 
       {/* Only show the error messages if there are errors */}
       {errors.length > 0 && (
-        <section className="mb-4 text-red-600 bg-red-100 p-2 rounded border border-red-300" role="alert">
+        <section
+          className="mb-4 text-red-600 bg-red-100 p-2 rounded border border-red-300"
+          role="alert"
+        >
           <ul>
             {errors.map((error, index) => (
               <li key={index}>{error}</li>
@@ -604,15 +720,38 @@ export default function Tournament() {
       {/* List of Tournaments */}
       <section className="space-y-4" aria-label="Tournaments">
         {tournamentData.map((t) => (
-          <article key={t._id} className="border rounded-lg shadow-sm">
-            <div 
-              className="flex justify-between items-center p-4 rounded-lg bg-white cursor-pointer hover:bg-gray-50"
+          <article
+            key={t._id}
+            className="border border-[#e7f5bd] rounded-lg shadow-sm"
+          >
+            <div
+              className={`flex justify-between items-center p-4 bg-[#6C45E3] cursor-pointer hover:bg-[#cabdf5] ${
+                openAccordion === t._id ? "rounded-t-lg" : "rounded-lg"
+              }`}
               onClick={() => handleAccordionToggle(t._id)}
             >
-              <h2 className="text-xl font-semibold text-gray-800">{t.name}</h2>
-            {currentUser &&
+              <h2 className="text-xl font-semibold text-[#BCE345]">{t.name}</h2>
+              <div className="p-1">
+                <span className="text-sm text-[#c7e864]">Tournament Type</span>
+                <p className="font-medium capitalize text-[#BCE345]">
+                  {t.type}
+                </p>
+              </div>
+              <div className="p-3">
+                <span className="text-[#c7e864] text-sm">Start Time</span>
+                <p className="font-medium text-[#BCE345]">
+                  {new Date(t.startDateTime).toLocaleString([], {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                </p>
+              </div>
+              {currentUser &&
                 t.createdBy?.username?.trim().toLowerCase() ===
-                currentUser.trim().toLowerCase() && (
+                  currentUser.trim().toLowerCase() && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -625,24 +764,17 @@ export default function Tournament() {
                   </button>
                 )}
             </div>
-            
-            <div id={`tournament-${t._id}`} className="hidden">
-              <div className="p-4 bg-gray-50 space-y-4">
+
+            {openAccordion === t._id && (
+              <div className="p-4 bg-[#ede9fc] border border-[#e7f5bd] rounded-bl-lg rounded-br-lg space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <span className="text-gray-500 text-sm">Tournament Type</span>
-                    <p className="font-medium capitalize">{t.type}</p>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <span className="text-gray-500 text-sm">Teams</span>
+                  <div className="p-3">
+                    <span className="text-[##7b9b17] text-sm">Teams</span>
                     <p className="font-medium">
-                      <span className="text-blue-600">{teamCounts[t._id] || 0}</span> / {t.maxTeams}
-                    </p>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm col-span-2">
-                    <span className="text-gray-500 text-sm">Start Time</span>
-                    <p className="font-medium text-blue-600">
-                      {new Date(t.startDateTime).toLocaleString()}
+                      <span className="text-[##7b9b17]">
+                        {teamCounts[t._id] || 0}
+                      </span>{" "}
+                      / {t.maxTeams}
                     </p>
                   </div>
                 </div>
@@ -650,24 +782,34 @@ export default function Tournament() {
                 {/* Teams Section */}
                 <section className="space-y-4" aria-label="Teams">
                   <h4 className="text-lg font-semibold">Teams</h4>
-                  
+
                   {teams[t._id]?.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {teams[t._id].map((team) => (
-                        <article key={team._id} className="bg-white p-4 rounded-lg shadow-sm">
+                        <article
+                          key={team._id}
+                          className="bg-white p-4 rounded-lg shadow-sm"
+                        >
                           <div className="flex justify-between items-start mb-4">
-                            <h5 className="font-semibold text-lg">{team.name}</h5>
+                            <h5 className="font-semibold text-lg">
+                              {team.name}
+                            </h5>
                             {/* Add debug log */}
-                            {console.log('Creator check:', {
+                            {console.log("Creator check:", {
                               teamCreator: team.createdBy,
                               teamCreatorId: team.createdBy._id,
                               currentUserId: currentUserId,
                               currentUser: currentUser,
-                              isCreator: team.createdBy.username?.toLowerCase() === currentUser?.toLowerCase()
+                              isCreator:
+                                team.createdBy.username?.toLowerCase() ===
+                                currentUser?.toLowerCase(),
                             })}
-                            {team.createdBy.username?.toLowerCase() === currentUser?.toLowerCase() && (
+                            {team.createdBy.username?.toLowerCase() ===
+                              currentUser?.toLowerCase() && (
                               <button
-                                onClick={() => handleDeleteTeam(team._id, t._id)}
+                                onClick={() =>
+                                  handleDeleteTeam(team._id, t._id)
+                                }
                                 className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-50"
                                 title="Delete Team"
                               >
@@ -675,78 +817,95 @@ export default function Tournament() {
                               </button>
                             )}
                           </div>
-                          
+
                           {/* Team Members */}
                           <div className="space-y-2 mb-4">
                             <p className="text-sm text-gray-600">Members:</p>
                             <ul className="list-none space-y-2">
-                                {team.members.map((member) => (
-                                    <li key={member._id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                        <div className="flex items-center">
-                                            <span className="text-sm">{member.username}</span>
-                                            {member.discordId === currentUserId && (
-                                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                    You
-                                                </span>
-                                            )}
-                                            {member._id === team.createdBy._id && (
-                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                                    Creator
-                                                </span>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Controls */}
-                                        <div className="flex items-center space-x-2">
-                                            {/* Remove Member Button - Only shown to team creator and not for themselves */}
-                                            {team.createdBy._id === currentUserId && 
-                                             member._id !== team.createdBy._id && (
-                                                <button
-                                                    onClick={() => handleRemoveMember(team._id, member._id, t._id)}
-                                                    className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-50"
-                                                    title="Remove Member"
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                            
-                                            {/* Leave Team Button - Only shown to the member themselves if they're not the creator */}
-                                            {member.discordId === currentUserId && 
-                                             member._id !== team.createdBy._id && (
-                                                <button
-                                                    onClick={() => handleLeaveTeam(team._id, t._id)}
-                                                    className="text-yellow-600 hover:text-yellow-700 text-sm px-2 py-1 rounded-md hover:bg-yellow-50"
-                                                >
-                                                    Leave
-                                                </button>
-                                            )}
-                                        </div>
-                                    </li>
-                                ))}
+                              {team.members.map((member) => (
+                                <li
+                                  key={member._id}
+                                  className="flex items-center justify-between bg-gray-50 p-2 rounded"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="text-sm">
+                                      {member.username}
+                                    </span>
+                                    {member.discordId === currentUserId && (
+                                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                        You
+                                      </span>
+                                    )}
+                                    {member._id === team.createdBy._id && (
+                                      <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                        Creator
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Controls */}
+                                  <div className="flex items-center space-x-2">
+                                    {/* Remove Member Button - Only shown to team creator and not for themselves */}
+                                    {team.createdBy._id === currentUserId &&
+                                      member._id !== team.createdBy._id && (
+                                        <button
+                                          onClick={() =>
+                                            handleRemoveMember(
+                                              team._id,
+                                              member._id,
+                                              t._id
+                                            )
+                                          }
+                                          className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-50"
+                                          title="Remove Member"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+
+                                    {/* Leave Team Button - Only shown to the member themselves if they're not the creator */}
+                                    {member.discordId === currentUserId &&
+                                      member._id !== team.createdBy._id && (
+                                        <button
+                                          onClick={() =>
+                                            handleLeaveTeam(team._id, t._id)
+                                          }
+                                          className="text-yellow-600 hover:text-yellow-700 text-sm px-2 py-1 rounded-md hover:bg-yellow-50"
+                                        >
+                                          Leave
+                                        </button>
+                                      )}
+                                  </div>
+                                </li>
+                              ))}
                             </ul>
                           </div>
 
                           {/* Team Controls Section */}
                           <div className="mt-4 space-y-2">
-                              {/* Delete Team Button - Only shown to creator */}
-                              {team.createdBy._id === currentUserId && (
-                                  <button
-                                      onClick={() => handleDeleteTeam(team._id, t._id)}
-                                      className="w-full py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                                  >
-                                      Delete Team
-                                  </button>
-                              )}
+                            {/* Delete Team Button - Only shown to creator */}
+                            {team.createdBy._id === currentUserId && (
+                              <button
+                                onClick={() =>
+                                  handleDeleteTeam(team._id, t._id)
+                                }
+                                className="w-full py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                              >
+                                Delete Team
+                              </button>
+                            )}
 
-                              {/* Join Team Button */}
-                              {!isUserInTeam(team, currentUserId) && 
-                               team.members.length < getMaxTeamSize(t.type) && (
-                                  <button
-                                      onClick={() => handleJoinTeam(team._id, t._id)}
-                                      className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                  >
-                                      Join Team
-                                  </button>
+                            {/* Join Team Button */}
+                            {!isUserInTeam(team, currentUserId) &&
+                              team.members.length < getMaxTeamSize(t.type) && (
+                                <button
+                                  onClick={() =>
+                                    handleJoinTeam(team._id, t._id)
+                                  }
+                                  className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                  Join Team
+                                </button>
                               )}
                           </div>
                         </article>
@@ -760,27 +919,28 @@ export default function Tournament() {
                   {(teamCounts[t._id] || 0) < t.maxTeams && (
                     <button
                       onClick={() => handleCreateTeam(t._id, t.type)}
-                      className="w-full py-2 px-4 rounded-md font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                      className="w-full py-2 px-4 rounded-md font-medium bg-[#b7e138] hover:bg-[#b7e138] text-[#6C45E3] transition-colors duration-200"
                     >
                       Create Team
                     </button>
                   )}
                 </section>
               </div>
-            </div>
+            )}
           </article>
         ))}
       </section>
-
-      <CreateTeamForm
-        isOpen={isCreateTeamModalOpen}
-        onClose={() => {
-          setIsCreateTeamModalOpen(false);
-          setSelectedTournament(null);
-        }}
-        onSubmit={handleTeamFormSubmit}
-        tournamentType={selectedTournament?.type}
-      />
+      <section className="">
+        <CreateTeamForm
+          isOpen={isCreateTeamModalOpen}
+          onClose={() => {
+            setIsCreateTeamModalOpen(false);
+            setSelectedTournament(null);
+          }}
+          onSubmit={handleTeamFormSubmit}
+          tournamentType={selectedTournament?.type}
+        />
+      </section>
     </main>
   );
 }

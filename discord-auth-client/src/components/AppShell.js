@@ -105,12 +105,12 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
   };
 
   return (
-    <div className="flex h-screen text-[#BCE345] bg-[#6C45E3]">
+    <div className="flex h-screen bg-[#6C45E3]">
       {/* Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-full bg-[#6C45E3]">
         <div className="flex flex-col flex-1 overflow-y-auto p-8 gap-2">
-          <h2 className="text-[25px] font-semibold mb-8">{activeLink}</h2>
-          <nav className="flex-1 flex flex-col items-start gap-2" aria-label="Sidebar Navigation">
+          <h2 className="text-[25px] text-[#BCE345] font-semibold mb-8">{activeLink}</h2>
+          <nav className="flex-1 flex flex-col items-start gap-2 text-[#BCE345]" aria-label="Sidebar Navigation">
             {navLinks.slice(0, -1).map(({ icon, label, path }) => (
               <button key={label} onClick={() => setActiveLink(label)}>
                 <Link to={path} className="inline-flex gap-2 hover:font-semibold">
@@ -121,7 +121,7 @@ const AppShell = ({ user, userTeam, setUserTeam }) => {
             ))}
           </nav>
           {/* Logout Button always at the bottom */}
-          <div className="mt-4">
+          <div className="mt-4 text-[#BCE345]">
             <button
               onClick={handleLogout}
               className="inline-flex gap-2 hover:font-semibold"

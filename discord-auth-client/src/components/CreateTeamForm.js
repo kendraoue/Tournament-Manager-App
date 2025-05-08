@@ -23,15 +23,16 @@ export default function CreateTeamForm({ isOpen, onClose, onSubmit, tournamentTy
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-[#6C45E3] rounded-lg p-4 w-full max-w-md text-[#BCE345]">
+        <div className="flex items-center justify-between w-full mb-4">
           <h2 className="text-xl font-bold text-gray-800">Create New Team</h2>
           <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ×
-          </button>
+        onClick={onClose}
+        className="text-lime-500 hover:text-lime-700 text-2xl leading-none"
+        aria-label="Close"
+      >
+        &times;
+      </button>
         </div>
 
         {error && (
@@ -61,15 +62,8 @@ export default function CreateTeamForm({ isOpen, onClose, onSubmit, tournamentTy
 
           <div className="flex justify-end space-x-3 mt-6">
             <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-            <button
               type="submit"
-              className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              className="px-4 py-2 text-black bg-blue-600 rounded-md hover:bg-blue-700"
             >
               Create Team
             </button>
